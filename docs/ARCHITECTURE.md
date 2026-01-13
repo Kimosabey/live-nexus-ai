@@ -443,16 +443,17 @@ VAD_DROPPED = Counter('vad_dropped_frames', 'Frames dropped by VAD')
 - Python worker (logs audio)
 - Docker containerization
 
-### 🔄 Phase 2: AI Integration (Week 2)
-- webrtcvad implementation
-- faster-whisper inference
+### ✅ Phase 2: AI Integration (Week 2) - **COMPLETE**
+- webrtcvad implementation (70% silence dropped)
+- faster-whisper inference (CPU optimized)
 - Audio format conversion (PCM → Whisper)
 - DataChannel transcript sending
+- Live UI updates (Partial results + Stats)
 
-### 🔄 Phase 3: UI Polish (Week 3)
-- Double-buffer rendering
+### 🔄 Phase 3: UI Polish (Week 3) (In Progress)
+- Double-buffer rendering completed (Phase 1)
 - Timestamp formatting
-- Export functionality (JSON, TXT)
+- Export functionality completed (Phase 2)
 - Error boundaries
 
 ### 🔄 Phase 4: Resource Intelligence (Week 4)

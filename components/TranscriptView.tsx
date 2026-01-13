@@ -87,13 +87,44 @@ export default function TranscriptView({ room }: TranscriptViewProps) {
                 ))}
             </div>
 
-            {/* Stats */}
+            {/* Stats & Export */}
             {transcripts.length > 0 && (
-                <div className="glass rounded-lg p-4 border border-stealth-gray-800">
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-stealth-silver">Total Transcripts:</span>
-                        <span className="text-stealth-accent font-semibold">{transcripts.length}</span>
+                <div className="glass rounded-lg p-4 border border-stealth-gray-800 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6 text-sm">
+                        <div className="flex flex-col">
+                            <span className="text-stealth-gray-700 text-xs uppercase tracking-wider">Transcripts</span>
+                            <span className="text-stealth-accent font-semibold text-lg">{transcripts.length}</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-stealth-gray-700 text-xs uppercase tracking-wider">Words</span>
+                            <span className="text-stealth-accent font-semibold text-lg">
+                                {transcripts.reduce((acc, t) => acc + t.text.split(' ').filter(w => w.length > 0).length, 0)}
+                            </span>
+                        </div>
                     </div>
+
+                    <button
+                        onClick={() => {
+                            const text = transcripts.map(t => `[${t.timestamp.toLocaleTimeString()}] ${t.text}`).join('\n');
+                            const blob = new Blob([text], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `livenexus-transcript-${new Date().toISOString().slice(0, 10)}.txt`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }}
+                        className="px-4 py-2 bg-stealth-gray-800 hover:bg-stealth-gray-700 border border-stealth-gray-700 rounded text-sm text-stealth-silver transition-colors flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export TXT
+                    </button>
                 </div>
             )}
         </div>
