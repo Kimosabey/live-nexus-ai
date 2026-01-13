@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-stealth-gray-700;
+  }
+  
+  body {
+    @apply bg-stealth-black text-stealth-silver font-grotesk;
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  /* Stealth Button */
+  .btn-stealth {
+    @apply px-6 py-3 rounded-lg font-medium;
+    @apply bg-stealth-gray-800 text-stealth-silver;
+    @apply border border-stealth-gray-700;
+    @apply hover:border-stealth-accent hover:text-stealth-accent;
+    @apply transition-all duration-300;
+    @apply active:scale-95;
+  }
+
+  .btn-stealth-primary {
+    @apply btn-stealth;
+    @apply bg-stealth-accent text-stealth-black;
+    @apply border-stealth-accent;
+    @apply hover:bg-transparent hover:text-stealth-accent;
+  }
+
+  /* Transcript Card */
+  .transcript-card {
+    @apply bg-stealth-gray-900 border border-stealth-gray-800;
+    @apply rounded-lg p-4;
+    @apply shadow-lg backdrop-blur-sm;
+  }
+
+  /* Glow Effect */
+  .glow-accent {
+    @apply shadow-[0_0_20px_rgba(0,217,255,0.3)];
+  }
+
+  /* Pulse Animation for Active States */
+  .pulse-active {
+    @apply animate-pulse-subtle;
+    @apply ring-2 ring-stealth-accent ring-opacity-50;
+  }
+}
+
+@layer utilities {
+  /* Glass Morphism */
+  .glass {
+    @apply bg-stealth-gray-900 bg-opacity-50 backdrop-blur-md;
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-stealth-silver to-stealth-accent;
+    @apply bg-clip-text text-transparent;
+  }
+}
