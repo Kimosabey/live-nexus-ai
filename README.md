@@ -56,6 +56,22 @@ docker run --env-file ../.env.local livenexus-worker
 
 ---
 
+## 📸 Screenshots
+
+### System Architecture
+![LiveNexus AI Architecture](docs/assets/architecture-diagram.png)
+
+### Real-Time Audio Pipeline
+![Data Flow Diagram](docs/assets/data-flow-diagram.png)
+
+### Core Features & Benefits
+![Features Overview](docs/assets/features-overview.png)
+
+### Technology Stack
+![Tech Stack](docs/assets/tech-stack.png)
+
+---
+
 ## 🎯 Key Features
 
 ### Phase 1 (Current)
@@ -248,7 +264,7 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## 👤 Author
 
-**Kimo** - Senior Hybrid Engineer  
+**Harshan Aiyappa ** - Senior Hybrid Engineer  
 Building Silicon Valley-grade AI platforms on consumer hardware
 
 ---
