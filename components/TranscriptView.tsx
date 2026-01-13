@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Room, RoomEvent, DataPacket_Kind } from 'livekit-client'
+import { useToast } from './ToastProvider'
 
 interface Transcript {
     id: string
@@ -17,6 +18,7 @@ interface TranscriptViewProps {
 export default function TranscriptView({ room }: TranscriptViewProps) {
     const [transcripts, setTranscripts] = useState<Transcript[]>([])
     const [partialTranscript, setPartialTranscript] = useState<string>('')
+    const { showToast } = useToast()
 
     useEffect(() => {
         if (!room) return
@@ -24,22 +26,24 @@ export default function TranscriptView({ room }: TranscriptViewProps) {
         // Listen for data messages from Python worker
         const handleDataReceived = (payload: Uint8Array, participant: any, kind: DataPacket_Kind) => {
             const decoder = new TextDecoder()
-            const message = JSON.parse(decoder.decode(payload))
+            try {
+                const message = JSON.parse(decoder.decode(payload))
 
-            if (message.type === 'transcript') {
-                if (message.isFinal) {
-                    // Add final transcript to history
-                    setTranscripts(prev => [...prev, {
-                        id: crypto.randomUUID(),
-                        text: message.text,
-                        isFinal: true,
-                        timestamp: new Date()
-                    }])
-                    setPartialTranscript('')
-                } else {
-                    // Update partial transcript (live typing effect)
-                    setPartialTranscript(message.text)
+                if (message.type === 'transcript') {
+                    if (message.isFinal) {
+                        setTranscripts(prev => [...prev, {
+                            id: crypto.randomUUID(),
+                            text: message.text,
+                            isFinal: true,
+                            timestamp: new Date()
+                        }])
+                        setPartialTranscript('')
+                    } else {
+                        setPartialTranscript(message.text)
+                    }
                 }
+            } catch (error) {
+                console.error("Failed to parse data message:", error)
             }
         }
 
@@ -49,6 +53,11 @@ export default function TranscriptView({ room }: TranscriptViewProps) {
             room.off(RoomEvent.DataReceived, handleDataReceived)
         }
     }, [room])
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        showToast('Transcript copied to clipboard', 'success')
+    }
 
     return (
         <div className="space-y-4">
@@ -76,13 +85,24 @@ export default function TranscriptView({ room }: TranscriptViewProps) {
                 )}
 
                 {transcripts.map((transcript) => (
-                    <div key={transcript.id} className="transcript-card hover:border-stealth-gray-700 transition-colors">
+                    <div key={transcript.id} className="transcript-card hover:border-stealth-gray-700 transition-colors group relative">
                         <div className="flex items-start justify-between gap-4">
                             <p className="text-stealth-silver flex-1">{transcript.text}</p>
-                            <span className="text-xs text-stealth-gray-700 whitespace-nowrap">
-                                {transcript.timestamp.toLocaleTimeString()}
+                            <span className="text-xs text-stealth-gray-700 whitespace-nowrap font-mono mt-1">
+                                {transcript.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </span>
                         </div>
+
+                        {/* Hover Copy Button */}
+                        <button
+                            onClick={() => copyToClipboard(transcript.text)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-stealth-gray-800 rounded hover:bg-stealth-gray-700 text-stealth-silver"
+                            title="Copy text"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
                     </div>
                 ))}
             </div>
@@ -115,14 +135,11 @@ export default function TranscriptView({ room }: TranscriptViewProps) {
                             a.click();
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
+                            showToast('Transcript exported successfully', 'success');
                         }}
-                        className="px-4 py-2 bg-stealth-gray-800 hover:bg-stealth-gray-700 border border-stealth-gray-700 rounded text-sm text-stealth-silver transition-colors flex items-center gap-2"
+                        className="btn-stealth flex items-center gap-2 py-2 px-4 text-sm"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                         Export TXT
                     </button>
                 </div>
