@@ -39,7 +39,7 @@ SAMPLES_PER_BUFFER = BUFFER_DURATION_SECONDS * WHISPER_SAMPLE_RATE
 
 
 class LiveNexusWorker:
-    """AI Worker with VAD filtering and Whisper inference"""
+    """AI Worker with VAD filtering, Whisper inference, and Adaptive Resource Management"""
     
     def __init__(self):
         self.room = None
@@ -47,8 +47,11 @@ class LiveNexusWorker:
         self.speech_frame_count = 0
         self.vad = None
         self.whisper_model = None
+        self.current_model_size = WHISPER_MODEL_SIZE
         self.audio_buffer = []
         self.transcription_count = 0
+        self.is_switching_model = False
+        self.cpu_history = []
         
     async def initialize_ai_models(self):
         """Load AI models (VAD + Whisper)"""
@@ -59,56 +62,113 @@ class LiveNexusWorker:
         
         # Initialize VAD
         logger.info("Loading Voice Activity Detection (VAD)...")
-        self.vad = webrtcvad.Vad(aggressiveness=3)  # 0-3, higher = stricter
+        self.vad = webrtcvad.Vad(aggressiveness=3)
         logger.info("✅ VAD loaded (aggressiveness: 3)")
         
         # Initialize Whisper
-        logger.info(f"Loading faster-whisper model: {WHISPER_MODEL_SIZE}")
+        await self._load_whisper_model(self.current_model_size)
+        logger.info("=" * 60)
+
+    async def _load_whisper_model(self, size: str):
+        """Internal method to load/switch model"""
+        self.is_switching_model = True
+        logger.info(f"🔄 Loading faster-whisper model: {size}...")
+        
         start_time = time.time()
         
-        self.whisper_model = WhisperModel(
-            WHISPER_MODEL_SIZE,
-            device="cpu",
-            compute_type="int8",  # Quantization for speed
-            num_workers=2  # Parallel processing
-        )
+        # Clean up old model if exists to free memory
+        if self.whisper_model:
+            del self.whisper_model
+            import gc
+            gc.collect()
+
+        try:
+            # We use a wrapper to avoid blocking the event loop during heavy model loading
+            self.whisper_model = await asyncio.to_thread(
+                WhisperModel,
+                size,
+                device="cpu",
+                compute_type="int8",
+                num_workers=2
+            )
+            
+            load_time = time.time() - start_time
+            self.current_model_size = size
+            logger.info(f"✅ Model {size} loaded in {load_time:.2f}s")
+            
+            # Notify UI
+            await self.send_system_status()
+        except Exception as e:
+            logger.error(f"Failed to load model {size}: {e}")
+        finally:
+            self.is_switching_model = False
+
+    async def monitor_resources(self):
+        """Background task to monitor CPU and adapt model sizing"""
+        logger.info("📊 Resource Monitor Started")
         
-        load_time = time.time() - start_time
-        logger.info(f"✅ Whisper model loaded in {load_time:.2f}s")
-        logger.info(f"   Model: {WHISPER_MODEL_SIZE}")
-        logger.info(f"   Device: CPU (int8 quantization)")
-        logger.info("=" * 60)
-        
+        while self.room and self.room.isconnected():
+            try:
+                cpu = psutil.cpu_percent(interval=2)
+                self.cpu_history.append(cpu)
+                if len(self.cpu_history) > 5:
+                    self.cpu_history.pop(0)
+
+                avg_cpu = sum(self.cpu_history) / len(self.cpu_history)
+                
+                # Logic for Adaptive Sizing
+                if avg_cpu > 85 and self.current_model_size != "tiny" and not self.is_switching_model:
+                    logger.warning(f"⚠️ High CPU Load ({avg_cpu:.1f}%). Downgrading to ECO MODE (tiny)...")
+                    await self._load_whisper_model("tiny")
+                
+                elif avg_cpu < 40 and self.current_model_size == "tiny" and not self.is_switching_model:
+                    logger.info(f"📈 CPU Load Normalized ({avg_cpu:.1f}%). Upgrading to PERFORMANCE MODE (base)...")
+                    await self._load_whisper_model("base")
+
+            except Exception as e:
+                logger.error(f"Monitor error: {e}")
+            
+            await asyncio.sleep(5)
+
+    async def send_system_status(self):
+        """Notify UI of current model and mode"""
+        mode = "ECO" if self.current_model_size == "tiny" else "PERFORMANCE"
+        status = {
+            "type": "system_status",
+            "model": self.current_model_size,
+            "mode": mode,
+            "cpu": psutil.cpu_percent()
+        }
+        await self._send_data(status)
+
+    async def _send_data(self, data: dict):
+        if not self.room: return
+        try:
+            payload = json.dumps(data).encode('utf-8')
+            await self.room.local_participant.publish_data(
+                payload,
+                kind=rtc.DataPacket_Kind.KIND_RELIABLE
+            )
+        except Exception as e:
+            logger.error(f"Data send error: {e}")
+
     def check_speech_activity(self, audio_data: bytes, sample_rate: int) -> bool:
         """
         Use VAD to detect if audio contains speech
-        
-        Args:
-            audio_data: Raw audio bytes (int16 PCM)
-            sample_rate: Sample rate (must be 8000, 16000, 32000, or 48000)
-        
-        Returns:
-            True if speech detected, False otherwise
         """
         try:
             # VAD requires specific sample rates
             if sample_rate not in [8000, 16000, 32000, 48000]:
-                logger.warning(f"Invalid sample rate for VAD: {sample_rate}, defaulting to True")
                 return True
-            
-            # VAD requires specific frame lengths (10, 20, or 30 ms)
-            # For now, we'll use conservative approach
             return self.vad.is_speech(audio_data, sample_rate)
-            
         except Exception as e:
-            logger.error(f"VAD error: {e}, defaulting to True")
-            return True  # On error, process the frame
+            return True
     
     async def transcribe_audio_buffer(self):
         """
         Transcribe accumulated audio buffer with Whisper
         """
-        if len(self.audio_buffer) == 0:
+        if len(self.audio_buffer) == 0 or self.is_switching_model:
             return
         
         try:
@@ -116,98 +176,52 @@ class LiveNexusWorker:
             audio_array = np.array(self.audio_buffer, dtype=np.float32)
             duration = len(audio_array) / WHISPER_SAMPLE_RATE
             
-            logger.info(f"🎙️  Transcribing {duration:.2f}s of audio...")
+            logger.info(f"🎙️  Transcribing {duration:.2f}s ({self.current_model_size})...")
             
             # Measure inference time
             start_time = time.time()
-            cpu_before = psutil.cpu_percent(interval=0.1)
             
-            # Transcribe with Whisper
-            segments, info = self.whisper_model.transcribe(
+            # Transcribe
+            segments, info = await asyncio.to_thread(
+                self.whisper_model.transcribe,
                 audio_array,
                 language="en",
                 task="transcribe",
-                vad_filter=False,  # We already did VAD
-                beam_size=5,
-                best_of=5,
-                without_timestamps=False  # Include timestamps
+                vad_filter=False,
+                beam_size=5
             )
             
-            # Extract text from all segments
             transcript_parts = []
             for segment in segments:
                 transcript_parts.append(segment.text.strip())
-                
-                # Send partial transcripts as they come (live typing effect)
-                if self.room:
-                    await self.send_transcript(
-                        text=segment.text.strip(),
-                        is_final=False
-                    )
+                await self.send_transcript(text=segment.text.strip(), is_final=False)
             
-            # Build final transcript
             final_transcript = " ".join(transcript_parts)
-            
-            # Measure performance
             inference_time = time.time() - start_time
-            cpu_after = psutil.cpu_percent(interval=0.1)
             
             # Log results
             if final_transcript:
                 self.transcription_count += 1
-                logger.info(f"📝 Transcript #{self.transcription_count}: {final_transcript}")
-                logger.info(f"⚡ Performance:")
-                logger.info(f"   Inference: {inference_time:.2f}s ({duration/inference_time:.1f}x realtime)")
-                logger.info(f"   CPU: {cpu_after}% (peak during inference)")
-                logger.info(f"   Language: {info.language} (confidence: {info.language_probability:.2%})")
+                logger.info(f"📝 [{self.current_model_size.upper()}] Transcript #{self.transcription_count}: {final_transcript}")
+                logger.debug(f"⚡ Inference: {inference_time:.2f}s ({duration/inference_time:.1f}x)")
                 
-                # Send final transcript
-                await self.send_transcript(
-                    text=final_transcript,
-                    is_final=True
-                )
-            else:
-                logger.warning("⚠️  No speech detected in audio buffer")
+                await self.send_transcript(text=final_transcript, is_final=True)
             
-            # Clear buffer
             self.audio_buffer = []
-            
         except Exception as e:
-            logger.error(f"❌ Transcription error: {e}", exc_info=True)
-            self.audio_buffer = []  # Clear buffer on error
+            logger.error(f"❌ Transcription error: {e}")
+            self.audio_buffer = []
     
     async def send_transcript(self, text: str, is_final: bool):
-        """
-        Send transcript to frontend via LiveKit DataChannel
-        
-        Args:
-            text: Transcript text
-            is_final: True if this is the final version, False if partial
-        """
-        if not self.room:
-            return
-        
-        try:
-            message = {
-                "type": "transcript",
-                "text": text,
-                "isFinal": is_final,
-                "timestamp": time.time()
-            }
-            
-            # Encode to bytes
-            payload = json.dumps(message).encode('utf-8')
-            
-            # Send via DataChannel
-            await self.room.local_participant.publish_data(
-                payload,
-                kind=rtc.DataPacket_Kind.KIND_RELIABLE
-            )
-            
-            logger.debug(f"📤 Sent {'final' if is_final else 'partial'} transcript: {text[:50]}...")
-            
-        except Exception as e:
-            logger.error(f"Failed to send transcript: {e}")
+        """Send transcript to frontend"""
+        message = {
+            "type": "transcript",
+            "text": text,
+            "isFinal": is_final,
+            "model": self.current_model_size,
+            "timestamp": time.time()
+        }
+        await self._send_data(message)
         
     async def connect_to_room(self):
         """Connect to LiveKit room as an AI agent"""
@@ -216,39 +230,29 @@ class LiveNexusWorker:
             raise ValueError("LiveKit credentials not set in environment variables")
         
         logger.info(f"🚀 Connecting to LiveKit: {LIVEKIT_URL}")
-        logger.info(f"📍 Room: {ROOM_NAME}")
         
-        # Generate access token for the worker
-        token_generator = api.AccessToken(
-            api_key=LIVEKIT_API_KEY,
-            api_secret=LIVEKIT_API_SECRET
-        )
+        # Generate access token
+        token_generator = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
         token_generator.identity = "livenexus-worker"
         token_generator.name = "LiveNexus AI Worker"
-        
-        # Grant permissions
-        token_generator.add_grant(
-            api.VideoGrants(
-                room_join=True,
-                room=ROOM_NAME,
-                can_subscribe=True,
-                can_publish=True,
-                can_publish_data=True
-            )
-        )
+        token_generator.add_grant(api.VideoGrants(
+            room_join=True, room=ROOM_NAME,
+            can_subscribe=True, can_publish=True, can_publish_data=True
+        ))
         
         token = token_generator.to_jwt()
-        
-        # Create room instance
         self.room = rtc.Room()
-        
-        # Register event handlers
         self.room.on("participant_connected", self.on_participant_connected)
         self.room.on("track_subscribed", self.on_track_subscribed)
         
-        # Connect to the room
         await self.room.connect(LIVEKIT_URL, token)
-        logger.info("✅ Connected to LiveKit room successfully!")
+        logger.info("✅ Connected! Starting Monitoring...")
+        
+        # Start monitoring task
+        asyncio.create_task(self.monitor_resources())
+        
+        # Initial status send
+        await self.send_system_status()
         
     async def on_participant_connected(self, participant: rtc.RemoteParticipant):
         """Called when a participant joins the room"""

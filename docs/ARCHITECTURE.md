@@ -457,11 +457,12 @@ VAD_DROPPED = Counter('vad_dropped_frames', 'Frames dropped by VAD')
 - Error boundaries (Graceful failure UI)
 - Toast notifications (Copy/Export feedback)
 
-### 🔄 Phase 4: Resource Intelligence (Week 4)
-- CPU monitoring
-- Adaptive model sizing
-- Memory leak prevention
-- Connection recovery
+### ✅ Phase 4: Resource Intelligence (Week 4) - **COMPLETE**
+- real-time CPU monitoring via `psutil`
+- Adaptive model sizing (auto-switch base ↔ tiny)
+- Model switch signaling to UI
+- Resource-aware transcription pipeline
+- Memory management (GC during model swap)
 
 ### 🔄 Phase 5: Production Ready (Week 5)
 - Authentication layer
