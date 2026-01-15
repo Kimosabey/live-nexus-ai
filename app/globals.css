@@ -16,14 +16,14 @@
 }
 
 @layer components {
-  /* Stealth Button */
+  /* Stealth Button with Enhanced Animations */
   .btn-stealth {
     @apply px-6 py-3 rounded-lg font-medium;
     @apply bg-stealth-gray-800 text-stealth-silver;
     @apply border border-stealth-gray-700;
-    @apply hover:border-stealth-accent hover:text-stealth-accent;
-    @apply transition-all duration-300;
-    @apply active:scale-95;
+    @apply hover:border-stealth-accent hover:text-stealth-accent hover:shadow-lg hover:shadow-stealth-accent/20;
+    @apply transition-all duration-300 ease-out;
+    @apply active:scale-95 hover:scale-105;
   }
 
   .btn-stealth-primary {
@@ -33,11 +33,14 @@
     @apply hover:bg-transparent hover:text-stealth-accent;
   }
 
-  /* Transcript Card */
+  /* Transcript Card with Fade-In */
   .transcript-card {
     @apply bg-stealth-gray-900 border border-stealth-gray-800;
     @apply rounded-lg p-4;
     @apply shadow-lg backdrop-blur-sm;
+    @apply transition-all duration-300;
+    @apply hover:border-stealth-gray-700 hover:shadow-xl;
+    animation: fadeSlideIn 0.5s ease-out;
   }
 
   /* Glow Effect */
@@ -47,7 +50,7 @@
 
   /* Pulse Animation for Active States */
   .pulse-active {
-    @apply animate-pulse-subtle;
+    animation: pulseGlow 2s ease-in-out infinite;
     @apply ring-2 ring-stealth-accent ring-opacity-50;
   }
 }
@@ -63,4 +66,73 @@
     @apply bg-gradient-to-r from-stealth-silver to-stealth-accent;
     @apply bg-clip-text text-transparent;
   }
+
+  /* Animation Utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.7s ease-out;
+  }
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0, 217, 255, 0.4);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00d9ff;
 }

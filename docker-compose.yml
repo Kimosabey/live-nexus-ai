@@ -1,21 +1,4 @@
-version: '3.8'
-
 services:
-  # Next.js Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        LIVEKIT_URL: ${LIVEKIT_URL}
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env.local
-    restart: unless-stopped
-    networks:
-      - livenexus-network
-
   # Python AI Worker
   worker:
     build:
@@ -26,11 +9,5 @@ services:
     environment:
       - LIVEKIT_ROOM=livenexus-demo
     restart: unless-stopped
-    depends_on:
-      - frontend
-    networks:
-      - livenexus-network
-
-networks:
-  livenexus-network:
-    driver: bridge
+    ports:
+      - "8080:8080" # Optional: for future health endpoint

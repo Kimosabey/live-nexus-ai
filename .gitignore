@@ -32,10 +32,13 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Python Virtual Environment
+# Python Virtual Environments
 venv/
+venv311/
 env/
 *.egg-info/
+ai-worker/venv/
+ai-worker/venv311/
 
 # Docker
 .dockerignore
@@ -43,3 +46,15 @@ env/
 # LiveKit Credentials (CRITICAL)
 *.key
 *.secret
+
+# Python Build Artifacts
+*.so
+*.egg
+build/
+dist/
+*.whl
+
+# Temporary Files
+*.tmp
+*.log
+.cache/

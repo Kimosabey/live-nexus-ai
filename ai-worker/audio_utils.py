@@ -4,7 +4,7 @@ Handles conversion between LiveKit audio format and Whisper requirements
 """
 
 import numpy as np
-from scipy import signal
+import librosa
 import logging
 
 logger = logging.getLogger(__name__)
@@ -49,17 +49,13 @@ def convert_livekit_to_whisper(
             audio_int16 = audio_int16.reshape(-1, 2).mean(axis=1).astype(np.int16)
             logger.debug(f"Converted stereo → mono: {len(audio_int16)} samples")
         
-        # Step 3: Resample if needed
-        if sample_rate != target_sample_rate:
-            # Calculate target number of samples
-            num_samples = int(len(audio_int16) * target_sample_rate / sample_rate)
-            
-            # Resample using scipy
-            audio_int16 = signal.resample(audio_int16, num_samples).astype(np.int16)
-            logger.debug(f"Resampled {sample_rate}Hz → {target_sample_rate}Hz: {len(audio_int16)} samples")
-        
-        # Step 4: Normalize to float32 [-1.0, 1.0]
+        # Step 3: Normalize to float32 first (librosa expects float)
         audio_float32 = audio_int16.astype(np.float32) / 32768.0
+        
+        # Step 4: Resample if needed using librosa
+        if sample_rate != target_sample_rate:
+            audio_float32 = librosa.resample(audio_float32, orig_sr=sample_rate, target_sr=target_sample_rate)
+            logger.debug(f"Resampled {sample_rate}Hz → {target_sample_rate}Hz: {len(audio_float32)} samples")
         
         return audio_float32
         
