@@ -13,7 +13,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY main.py .
+COPY . .
 
 # Run the worker
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD find /tmp/worker_health -mmin -2 || exit 1
+
 CMD ["python", "main.py"]

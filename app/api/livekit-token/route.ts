@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { AccessToken } from 'livekit-server-sdk'
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url)
+        const roomName = searchParams.get('room') || 'livenexus-demo'
+        const participantName = `user-${Math.floor(Math.random() * 10000)}`
+
         const apiKey = process.env.LIVEKIT_API_KEY
         const apiSecret = process.env.LIVEKIT_API_SECRET
         const livekitUrl = process.env.LIVEKIT_URL
@@ -14,10 +18,6 @@ export async function GET() {
             )
         }
 
-        // Generate room name (in production, this would be user-specific)
-        const roomName = 'livenexus-room'
-        const participantName = `user-${Date.now()}`
-
         // Create access token
         const at = new AccessToken(apiKey, apiSecret, {
             identity: participantName,
@@ -28,6 +28,7 @@ export async function GET() {
             room: roomName,
             canPublish: true,
             canSubscribe: true,
+            canPublishData: true,
         })
 
         const token = await at.toJwt()

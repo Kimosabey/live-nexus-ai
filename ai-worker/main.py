@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 LIVEKIT_URL = os.getenv('LIVEKIT_URL', 'ws://localhost:7880')
 LIVEKIT_API_KEY = os.getenv('LIVEKIT_API_KEY')
 LIVEKIT_API_SECRET = os.getenv('LIVEKIT_API_SECRET')
-ROOM_NAME = 'livenexus-room'
+ROOM_NAME = os.getenv('LIVEKIT_ROOM', 'livenexus-demo')
 
 # Whisper Configuration
 WHISPER_MODEL_SIZE = os.getenv('WHISPER_MODEL', 'base')  # tiny, base, small, medium
@@ -337,6 +337,17 @@ class LiveNexusWorker:
                 logger.error(f"Error processing audio frame: {e}", exc_info=True)
                 continue
             
+    async def monitor_health(self):
+        """Touch a file to signal health to Docker"""
+        health_file = "/tmp/worker_health"
+        while self.room and self.room.isconnected():
+            try:
+                with open(health_file, "w") as f:
+                    f.write(str(time.time()))
+            except Exception as e:
+                logger.error(f"Health check failed: {e}")
+            await asyncio.sleep(30)
+
     async def run(self):
         """Main worker loop"""
         try:
@@ -345,6 +356,9 @@ class LiveNexusWorker:
             
             # Then connect to LiveKit
             await self.connect_to_room()
+            
+            # Start health monitor
+            asyncio.create_task(self.monitor_health())
             
             # Keep the worker alive
             logger.info("🎯 Worker is running. Listening for audio...")
