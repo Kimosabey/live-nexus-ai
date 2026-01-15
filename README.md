@@ -8,6 +8,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)]()
 [![Python](https://img.shields.io/badge/Python-3.10-blue)]()
 
+![LiveNexus AI Hero](docs/assets/project_hero_white.png)
+
 ---
 
 ## 📋 Quick Start
