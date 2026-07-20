@@ -10,11 +10,11 @@ Grid WebP: `kimo-nexus/public/projects/live-nexus-ai.webp` (1280×640).
 
 | Asset | File | Size | Status |
 |---|---|---|---|
-| Thumbnail | `docs/assets/thumbnail.png` | 1280×640 | ✅ Legacy (1024²) — V3 light regen queued |
-| Hero | `docs/assets/hero_main.png` | 1920×1080 | ✅ Legacy (1024²) — V3 light regen queued |
-| Workflow | `docs/assets/workflow.png` | 1920×1080 | ✅ Legacy (1024²) — V3 light regen queued |
-| Dashboard | `docs/assets/dashboard.png` | 1600×1000 | ✅ Legacy (1024²) — V3 light regen queued |
-| Architecture | `docs/assets/architecture.png` | 1600×1000 | ✅ Legacy (1024²) — V3 light regen queued |
+| Thumbnail | `docs/assets/thumbnail.png` | 1280×640 | ✅ Shipped (V3 minimal) |
+| Hero | `docs/assets/hero_main.png` | 1920×1080 | ✅ Shipped (V3 minimal) |
+| Workflow | `docs/assets/workflow.png` | 1920×1080 | ✅ Shipped (V3 minimal) |
+| Dashboard | `docs/assets/dashboard.png` | 1600×1000 | ✅ Shipped (V3 minimal) |
+| Architecture | `docs/assets/architecture.png` | 1600×1000 | ✅ Shipped (V3 minimal) |
 
 ### Thumbnail prompt (required — grid + README)
 
