@@ -162,7 +162,7 @@ The trade-off is added complexity, but for a professional project, I wanted to d
 **A**:
 "I implemented the 'Tab 13 Stealth' design system:
 
-- **Pure Black (#000000)** background for zero eye strain
+- **Pure Black** background for zero eye strain
 - **Silver (#C0C0C0)** text for readability
 - **Cyan (#00D9FF)** accents for active states
 - **Space Grotesk** font for modern tech aesthetic
